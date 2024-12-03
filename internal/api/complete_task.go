@@ -50,7 +50,7 @@ func CompleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Возвращаем пустой JSON в случае успешного удаления
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`))
 		return
 	}
 
@@ -72,5 +72,5 @@ func CompleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Возвращаем пустой JSON в случае успешного обновления
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{}`))
+	_, _ = w.Write([]byte(`{}`))
 }

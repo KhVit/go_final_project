@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
 	"todo-api/internal/config"
 
 	"github.com/jmoiron/sqlx"
@@ -44,7 +45,7 @@ func GetUpcomingTasks(db *sqlx.DB) http.HandlerFunc {
                     SELECT id, date, title, comment, repeat
                     FROM scheduler 
                     WHERE date = ?
-                    ORDER BY date LIMIT 50`, date)
+                    ORDER BY date LIMIT ?`, date, config.TaskLimit)
 				if err != nil {
 					respondWithError(w, http.StatusInternalServerError, err.Error())
 					return
@@ -56,7 +57,7 @@ func GetUpcomingTasks(db *sqlx.DB) http.HandlerFunc {
                     SELECT id, date, title, comment, repeat
                     FROM scheduler 
                     WHERE title LIKE ? OR comment LIKE ?
-                    ORDER BY date LIMIT 50`, searchPattern, searchPattern)
+                    ORDER BY date LIMIT ?`, searchPattern, searchPattern, config.TaskLimit)
 				if err != nil {
 					respondWithError(w, http.StatusInternalServerError, err.Error())
 					return
@@ -67,7 +68,7 @@ func GetUpcomingTasks(db *sqlx.DB) http.HandlerFunc {
 			rows, err = db.Query(`
                 SELECT id, date, title, comment, repeat
                 FROM scheduler 
-                ORDER BY date LIMIT 50`)
+                ORDER BY date LIMIT ?`, config.TaskLimit)
 			if err != nil {
 				respondWithError(w, http.StatusInternalServerError, err.Error())
 				return
@@ -85,6 +86,10 @@ func GetUpcomingTasks(db *sqlx.DB) http.HandlerFunc {
 				return
 			}
 			tasks = append(tasks, task)
+		}
+		if err := rows.Err(); err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
 		}
 
 		if tasks == nil {

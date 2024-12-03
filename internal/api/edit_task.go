@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
 	"todo-api/internal/config"
 	"todo-api/internal/db"
 	"todo-api/internal/scheduler"
@@ -75,30 +76,6 @@ func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer dbConn.Close()
 
-	// Получаем текущую задачу из базы данных
-	var currentTask config.Task
-	query := `SELECT * FROM scheduler WHERE id=?`
-	err = dbConn.Get(&currentTask, query, task.Id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, `{"error": "Задача не найдена"}`, http.StatusNotFound)
-			return
-		}
-		http.Error(w, `{"error": "Ошибка при получении задачи"}`, http.StatusInternalServerError)
-		return
-	}
-
-	// Обновляем поля только если они не пустые
-	if task.Title != "" {
-		currentTask.Title = task.Title
-	}
-	if task.Comment != "" {
-		currentTask.Comment = task.Comment
-	}
-	if task.Repeat != "" {
-		currentTask.Repeat = task.Repeat
-	}
-
 	// Обработка даты
 	now := time.Now()
 	nowStr := now.Format(config.TimeFormat) // Строковое представление текущей даты
@@ -131,8 +108,12 @@ func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Обновление задачи в базе данных
-	updateQuery := `UPDATE scheduler SET date=?, title=?, comment=?, repeat=? WHERE id=?`
-	res, err := dbConn.Exec(updateQuery, task.Date, currentTask.Title, currentTask.Comment, currentTask.Repeat, task.Id)
+	updateQuery := `UPDATE scheduler SET date = COALESCE(NULLIF(?, ''), date), 
+	                                         title = COALESCE(NULLIF(?, ''), title), 
+	                                         comment = COALESCE(NULLIF(?, ''), comment), 
+	                                         repeat = COALESCE(NULLIF(?, ''), repeat) 
+	                   WHERE id = ?`
+	res, err := dbConn.Exec(updateQuery, task.Date, task.Title, task.Comment, task.Repeat, task.Id)
 	if err != nil {
 		http.Error(w, `{"error": "Ошибка обновления задачи"}`, http.StatusInternalServerError)
 		return
@@ -147,5 +128,5 @@ func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Успешное обновление
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{}`))
+	_, _ = w.Write([]byte(`{}`))
 }
